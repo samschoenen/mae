@@ -28,11 +28,11 @@ from timm.models.layers import trunc_normal_
 from timm.data.mixup import Mixup
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
 
-import util.lr_decay as lrd
-import util.misc as misc
-from util.datasets import build_dataset
-from util.pos_embed import interpolate_pos_embed
-from util.misc import NativeScalerWithGradNormCount as NativeScaler
+import mae_code.util.lr_decay as lrd
+import mae_code.util.misc as misc
+from mae_code.util.datasets import build_dataset
+from mae_code.util.pos_embed import interpolate_pos_embed
+from mae_code.util.misc import NativeScalerWithGradNormCount as NativeScaler
 
 import models_vit
 
