@@ -40,8 +40,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
 
-    for data_iter_step, (samples, targets, file_names) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-
+    for data_iter_step, (samples, targets) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        if data_iter_step >= len(data_loader):
+            break
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
@@ -105,7 +106,9 @@ def evaluate(data_loader, model, device):
     # switch to evaluation mode
     model.eval()
 
-    for batch in metric_logger.log_every(data_loader, 10, header):
+    for data_iter_step, batch in enumerate(metric_logger.log_every(data_loader, 10, header)):
+        if data_iter_step >= len(data_loader):
+            break
         images = batch[0]
         target = batch[1]
         images = images.to(device, non_blocking=True)
