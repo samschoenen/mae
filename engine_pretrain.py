@@ -36,8 +36,9 @@ def train_one_epoch(model: torch.nn.Module,
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
 
-    for data_iter_step, (samples, _, _) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-
+    for data_iter_step, (samples, _) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        if data_iter_step >= len(data_loader):
+            break
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
@@ -79,4 +80,32 @@ def train_one_epoch(model: torch.nn.Module,
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+
+@torch.no_grad()
+def evaluate(data_loader, model, device, args):
+    metric_logger = misc.MetricLogger(delimiter="  ")
+    header = 'Test:'
+    
+    # CRITICAL: switch to eval mode
+    # This turns off things like Dropout and fixes BatchNorm stats
+    model.eval()
+
+    for data_iter_step, (samples, _) in enumerate(metric_logger.log_every(data_loader, 10, header)):
+        # Stop loop for WebDataset resampled=True
+        if data_iter_step >= len(data_loader):
+            break
+
+        samples = samples.to(device, non_blocking=True)
+
+        # Use the same forward pass as training
+        with torch.cuda.amp.autocast():
+            loss, _, _ = model(samples, mask_ratio=args.mask_ratio)
+
+        metric_logger.update(loss=loss.item())
+
+    # Sync stats across GPUs if using DistributedDataParallel
+    metric_logger.synchronize_between_processes()
+    print(f" * Val Loss: {metric_logger.loss.global_avg:.4f}")
+    
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
